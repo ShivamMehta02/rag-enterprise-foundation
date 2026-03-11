@@ -4,6 +4,13 @@ import ollama
 
 from query_parser import extract_filters
 from reranker import rerank
+from metrics import Metrics
+
+# ----------------------------------------
+# Metrics
+# ----------------------------------------
+
+metrics = Metrics()
 
 # ----------------------------------------
 # Configuration
@@ -50,7 +57,19 @@ def show_available_orgs():
 
 def retrieve_context(query, org_id, brand=None, price_limit=None):
 
+    # ----------------------------------------
+    # Embedding
+    # ----------------------------------------
+
+    metrics.start("embedding")
+
     query_vector = model.encode(query).tolist()
+
+    metrics.end("embedding")
+
+    # ----------------------------------------
+    # Build Filters
+    # ----------------------------------------
 
     must_filters = [
         {
@@ -71,6 +90,12 @@ def retrieve_context(query, org_id, brand=None, price_limit=None):
             "range": {"lte": int(price_limit)}
         })
 
+    # ----------------------------------------
+    # Vector Search
+    # ----------------------------------------
+
+    metrics.start("vector_search")
+
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
@@ -78,14 +103,30 @@ def retrieve_context(query, org_id, brand=None, price_limit=None):
         query_filter={"must": must_filters}
     )
 
-    # collect documents
+    metrics.end("vector_search")
+
+    # ----------------------------------------
+    # Collect documents
+    # ----------------------------------------
+
     documents = [r.payload["text"] for r in results]
 
     if len(documents) == 0:
         return ""
 
-    # rerank documents
+    # ----------------------------------------
+    # Reranking
+    # ----------------------------------------
+
+    metrics.start("reranking")
+
     top_docs = rerank(query, documents)
+
+    metrics.end("reranking")
+
+    # ----------------------------------------
+    # Build Context
+    # ----------------------------------------
 
     context = ""
 
@@ -118,10 +159,18 @@ Question:
 Answer clearly and concisely.
 """
 
+    # ----------------------------------------
+    # LLM Inference Metrics
+    # ----------------------------------------
+
+    metrics.start("llm_inference")
+
     response = ollama.chat(
         model="llama3",
         messages=[{"role": "user", "content": prompt}]
     )
+
+    metrics.end("llm_inference")
 
     return response["message"]["content"]
 
@@ -158,7 +207,10 @@ def main():
             print("\nGoodbye.")
             break
 
-        # automatic filter extraction
+        # ----------------------------------------
+        # Query Parsing
+        # ----------------------------------------
+
         query, brand, price_limit = extract_filters(user_query)
 
         print("\nDetected Filters:")
@@ -166,11 +218,19 @@ def main():
         print("Brand:", brand)
         print("Price Limit:", price_limit)
 
+        # ----------------------------------------
+        # Retrieval
+        # ----------------------------------------
+
         context = retrieve_context(query, org_id, brand, price_limit)
 
         if context.strip() == "":
             print("\nNo matching records found.\n")
             continue
+
+        # ----------------------------------------
+        # LLM Answer
+        # ----------------------------------------
 
         answer = ask_llama(query, context)
 
