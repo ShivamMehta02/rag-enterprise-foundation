@@ -1,194 +1,140 @@
-Enterprise AI Assistant (RAG System)
+# Enterprise RAG Inventory Assistant
 
-An Enterprise Retrieval-Augmented Generation (RAG) assistant that allows users to query enterprise inventory data using natural language.
+This project implements an **Enterprise Retrieval-Augmented Generation (RAG) AI assistant** capable of answering inventory questions using semantic search and a local LLM.
 
-The system retrieves relevant business records from a vector database (Qdrant) and uses a local LLM (Llama3 via Ollama) to generate accurate answers grounded in enterprise data.
+The system retrieves relevant enterprise inventory data from a vector database and uses an LLM to generate grounded answers.
 
-Features
+---
 
-Semantic search over enterprise inventory
+## Architecture
 
-Multi-tenant architecture (organization isolation)
-
-Metadata filtering (brand, price)
-
-Vector database using Qdrant
-
-Local LLM inference using Ollama + Llama3
-
-Interactive enterprise chatbot
-
-Hybrid search (semantic + structured filters)
-
-System Architecture
 User Query
-    ↓
-SentenceTransformer Embedding
-    ↓
+↓
+Query Parser
+↓
+Embedding Model (Sentence Transformers)
+↓
 Vector Search (Qdrant)
-    ↓
+↓
 Metadata Filtering
-(org_id, brand, price)
-    ↓
-Context Retrieval
-    ↓
-Prompt Construction
-    ↓
-Llama3 (Ollama)
-    ↓
-Final AI Answer
-Technologies Used
+↓
+Reranker
+↓
+LLM (Llama3 via Ollama)
+↓
+Final Response
 
-Python
+---
 
-SentenceTransformers
+## Features
 
-Qdrant Vector Database
+- Semantic search over enterprise inventory
+- Multi-tenant organization isolation
+- Metadata filtering (brand, price)
+- Reranked retrieval results
+- Local LLM reasoning
+- FastAPI backend
+- Web chat interface
 
-Ollama (Llama3)
+---
 
-Docker
+## Tech Stack
 
-FAISS (initial experimentation)
+Backend:
+- Python
+- FastAPI
 
-Project Structure
+AI / ML:
+- Sentence Transformers
+- CrossEncoder reranker
+- Llama3 via Ollama
+
+Vector Database:
+- Qdrant
+
+Frontend:
+- HTML + JavaScript
+
+---
+
+## Project Structure
 rag_system
 │
-├── ask_enterprise_ai.py        # Enterprise chatbot
-├── search_docs.py              # Vector search testing
-├── ingest_mock_data.py         # Mock data generator
-├── create_collection.py        # Qdrant collection creation
+├── api_server.py
+├── ask_enterprise_ai.py
+├── query_parser.py
+├── reranker.py
+├── ingest_mock_data.py
+├── search_docs.py
 │
 ├── rag/
-│   ├── qdrant_store.py
-│   ├── milvus_store.py
-│   └── vector_store.py
+│ ├── vector_store.py
+│ ├── qdrant_store.py
+│ └── milvus_store.py
 │
-├── core/
-│   ├── embedding_client.py
-│   └── llm_client.py
-│
-├── registry/
-│   └── zoho_etl.py
+├── static/
+│ └── index.html
 │
 └── README.md
-Mock Data Setup
+## Example Queries
 
-The system generates enterprise-like mock data to simulate multiple organizations.
 
-Configuration:
+keyboard
+device used for typing
+gaming input hardware
+cheap device for typing from technova
 
-10 Organizations
-10 Records per Organization
-Total = 100 Vector Documents
 
-Each stored document contains:
+---
 
-text
-org_id
-brand
-sku
-price
-embedding vector (384 dimensions)
-Setup Instructions
-1. Start Qdrant
+## Running the System
 
-Run the vector database using Docker:
+Start Qdrant
+
 
 docker run -p 6333:6333 qdrant/qdrant
 
-Open dashboard:
 
-http://localhost:6333/dashboard
-2. Activate Python Environment
-venv\Scripts\activate
-3. Insert Mock Data
-python ingest_mock_data.py
+Start API server
 
-This creates 100 vector records across 10 organizations.
 
-4. Run the Enterprise AI Assistant
-python ask_enterprise_ai.py
-Example Interaction
-Enterprise AI Assistant
+uvicorn api_server:app --reload
 
-Available Organisations:
-- org_1
-- org_2
-- org_3
-...
 
-Enter your organisation id:
-org_3
+Open chat UI
 
-Ask about inventory:
-router
 
-Brand filter:
-NetLink
+http://127.0.0.1:8000
 
-Max price filter:
-6000
 
-AI Response:
+---
 
-The NetLink router with SKU NL-RT-21 costs 5400 rupees.
-Key Capabilities
-Semantic Search
+## Example Response
 
-Users can query inventory using natural language.
+Query:
 
-Example:
 
-gaming keyboard
-wireless router
-cheap monitor
-Multi-Tenant Data Isolation
+cheap device for typing from technova
 
-Each organization only sees its own data.
 
-org_1 → only org_1 inventory
-org_2 → only org_2 inventory
-Hybrid Filtering
+Response:
 
-Search combines:
 
-vector similarity
-+
-metadata filters
+The Gaming Keyboard MK87 from Technova costs 3499 rupees.
 
-Filters supported:
 
-brand
-price
-organization
-Future Improvements
+---
 
-Automatic filter extraction from natural language
+## Future Improvements
 
-Support additional enterprise entities:
+- Hybrid search (vector + keyword)
+- Query understanding improvements
+- Better metadata ranking
+- Authentication and multi-org login
+- Deployment with Docker
 
-orders
+---
 
-customers
+## Author
 
-invoices
-
-Reranking models for better retrieval
-
-Web dashboard UI
-
-API integration with Zoho ERP
-
-Author
-
-Shivam
-AI / ML Engineer (AIML)
-
-License
-
-MIT License
-
-Repository Purpose
-
-This repository demonstrates a production-style Retrieval-Augmented Generation system for enterprise AI assistants, combining vector databases, semantic search, and LLM reasoning.
+Shivam Mehta

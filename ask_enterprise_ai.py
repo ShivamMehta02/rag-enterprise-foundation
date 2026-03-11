@@ -2,6 +2,9 @@ from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 import ollama
 
+from query_parser import extract_filters
+from reranker import rerank
+
 # ----------------------------------------
 # Configuration
 # ----------------------------------------
@@ -71,14 +74,23 @@ def retrieve_context(query, org_id, brand=None, price_limit=None):
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
-        limit=5,
+        limit=10,
         query_filter={"must": must_filters}
     )
 
+    # collect documents
+    documents = [r.payload["text"] for r in results]
+
+    if len(documents) == 0:
+        return ""
+
+    # rerank documents
+    top_docs = rerank(query, documents)
+
     context = ""
 
-    for r in results:
-        context += r.payload["text"] + "\n"
+    for doc in top_docs:
+        context += doc + "\n"
 
     return context
 
@@ -124,7 +136,7 @@ def main():
     print(" Enterprise AI Assistant")
     print("==============================")
 
-    # show orgs
+    # show organisations
     valid_orgs = show_available_orgs()
 
     org_id = input("\nEnter your organisation id: ").strip()
@@ -133,35 +145,32 @@ def main():
         print("Invalid organisation id.")
         org_id = input("Enter a valid organisation id: ").strip()
 
-    print("\nOptional filters available:")
-    print(" - brand")
-    print(" - max price")
+    print("\nYou can ask naturally like:")
+    print("show NetLink routers under 6000")
+    print("gaming keyboard")
+    print("cheap monitor\n")
 
     while True:
 
-        query = input("\nAsk about inventory (type 'exit' to quit): ").strip()
+        user_query = input("\nAsk about inventory (type 'exit' to quit): ").strip()
 
-        if query.lower() == "exit":
+        if user_query.lower() == "exit":
             print("\nGoodbye.")
             break
 
-        brand = input("Brand filter (press Enter to skip): ").strip()
-        price_limit = input("Max price filter (press Enter to skip): ").strip()
+        # automatic filter extraction
+        query, brand, price_limit = extract_filters(user_query)
 
-        if brand == "":
-            brand = None
-
-        if price_limit == "":
-            price_limit = None
+        print("\nDetected Filters:")
+        print("Query:", query)
+        print("Brand:", brand)
+        print("Price Limit:", price_limit)
 
         context = retrieve_context(query, org_id, brand, price_limit)
 
         if context.strip() == "":
             print("\nNo matching records found.\n")
             continue
-
-        # Debug (optional)
-        # print("\nRetrieved Context:\n", context)
 
         answer = ask_llama(query, context)
 
