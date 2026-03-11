@@ -4,28 +4,34 @@ from qdrant_client.models import Distance, VectorParams
 
 class QdrantVectorStore:
 
-    def __init__(self, collection_name="rag_collection", dim=384):
+    def __init__(self, collection_name="enterprise_docs", dim=384):
 
-        self.client = QdrantClient(":memory:")
+        # connect to running docker qdrant
+        self.client = QdrantClient(host="localhost", port=6333)
 
         self.collection_name = collection_name
 
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config=VectorParams(
-                size=dim,
-                distance=Distance.COSINE
-            ),
-        )
+        # create collection only if it does not exist
+        if not self.client.collection_exists(collection_name):
 
-    def insert(self, embeddings):
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=dim,
+                    distance=Distance.COSINE
+                ),
+            )
+
+    def insert(self, embeddings, payloads):
 
         points = []
 
         for i, emb in enumerate(embeddings):
+
             points.append({
                 "id": i,
-                "vector": emb
+                "vector": emb,
+                "payload": payloads[i]
             })
 
         self.client.upsert(
@@ -33,12 +39,20 @@ class QdrantVectorStore:
             points=points
         )
 
-    def search(self, query_vector, top_k=3):
+    def search(self, query_vector, org_id, top_k=3):
 
         results = self.client.search(
             collection_name=self.collection_name,
             query_vector=query_vector,
-            limit=top_k
+            limit=top_k,
+            query_filter={
+                "must": [
+                    {
+                        "key": "org_id",
+                        "match": {"value": org_id}
+                    }
+                ]
+            }
         )
 
         return results
